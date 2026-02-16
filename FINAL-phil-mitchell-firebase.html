@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Phil Mitchell Radio Hour - Flashlight Sync</title>
+    
+    <!-- Firebase SDK v9 (modular) -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getDatabase, ref, set, onValue, push, remove, onDisconnect } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+
+        // Your Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC_LXTw9P9EipLpXGguxh1bA0DT_dXFboQ",
+            authDomain: "phil-mitchell-s-holy-light.firebaseapp.com",
+            databaseURL: "https://phil-mitchell-s-holy-light-default-rtdb.firebaseio.com",
+            projectId: "phil-mitchell-s-holy-light",
+            storageBucket: "phil-mitchell-s-holy-light.firebasestorage.app",
+            messagingSenderId: "269027793355",
+            appId: "1:269027793355:web:ca5285d2f3e0bb406e3e4e",
+            measurementId: "G-D01K1KM3RM"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Make Firebase available globally
+        window.firebaseDb = database;
+        window.firebaseRef = ref;
+        window.firebaseSet = set;
+        window.firebaseOnValue = onValue;
+        window.firebasePush = push;
+        window.firebaseRemove = remove;
+        window.firebaseOnDisconnect = onDisconnect;
+        
+        console.log('Firebase initialized successfully!');
+    </script>
+
+    <!-- React -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&display=swap">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Cinzel', serif;
+            background: #000;
+            color: #fff;
+            overflow-x: hidden;
+        }
+        
+        .rapture-bg {
+            background: radial-gradient(ellipse at center, #4a0e0e 0%, #1a0000 50%, #000000 100%);
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        .rapture-bg::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: 
+                linear-gradient(45deg, transparent 48%, rgba(139, 0, 0, 0.1) 49%, rgba(139, 0, 0, 0.1) 51%, transparent 52%),
+                linear-gradient(-45deg, transparent 48%, rgba(139, 0, 0, 0.1) 49%, rgba(139, 0, 0, 0.1) 51%, transparent 52%);
+            background-size: 100px 100px;
+            opacity: 0.3;
+            pointer-events: none;
+        }
+        
+        .phil-title {
+            font-family: 'Cinzel', serif;
+            font-weight: 700;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5), 0 0 20px rgba(139, 0, 139, 0.3);
+        }
+        
+        .radio-o {
+            display: inline-block;
+            position: relative;
+        }
+        
+        .radio-o::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 0.6em;
+            height: 0.02em;
+            background: currentColor;
+        }
+        
+        .btn-rapture {
+            background: linear-gradient(135deg, #8b0000 0%, #4a0000 100%);
+            border: 2px solid rgba(139, 0, 139, 0.5);
+            padding: 20px 40px;
+            border-radius: 8px;
+            font-family: 'Cinzel', serif;
+            font-size: 18px;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+        
+        .btn-rapture:hover {
+            border-color: rgba(139, 0, 139, 0.8);
+            box-shadow: 0 0 30px rgba(139, 0, 139, 0.6);
+        }
+
+        .btn-rapture.running {
+            background: linear-gradient(135deg, #8b008b 0%, #4a004a 100%);
+            animation: pulse-bright 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse-bright {
+            0%, 100% { box-shadow: 0 0 30px rgba(139, 0, 139, 0.8); }
+            50% { box-shadow: 0 0 50px rgba(139, 0, 139, 1); }
+        }
+
+        .lightning-bolt {
+            animation: flicker 3s infinite;
+        }
+        
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            45%, 55% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        .connected-indicator {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.6; box-shadow: 0 0 10px rgba(0, 255, 100, 0.5); }
+            50% { opacity: 1; box-shadow: 0 0 20px rgba(0, 255, 100, 0.8); }
+        }
+
+        .loading-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 0.1em;
+        }
+
+        .status-idle {
+            background: rgba(100, 100, 100, 0.3);
+            color: rgba(255, 255, 255, 0.6);
+            border: 1px solid rgba(100, 100, 100, 0.5);
+        }
+
+        .status-running {
+            background: rgba(139, 0, 139, 0.4);
+            color: #fff;
+            border: 1px solid rgba(139, 0, 139, 0.8);
+            animation: pulse-bright 1.5s ease-in-out infinite;
+        }
+
+        .counter-display {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(0, 255, 100, 0.3);
+            border-radius: 6px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .counter-number {
+            font-size: 48px;
+            font-weight: bold;
+            color: #00ff64;
+            text-shadow: 0 0 20px rgba(0, 255, 100, 0.6);
+        }
+
+        input, select {
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(139, 0, 139, 0.3);
+            color: #fff;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: 'Cinzel', serif;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: rgba(139, 0, 139, 0.7);
+            box-shadow: 0 0 20px rgba(139, 0, 139, 0.3);
+        }
+
+        .control-panel {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .panel-section {
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(139, 0, 139, 0.3);
+            border-radius: 8px;
+            padding: 30px;
+            margin: 20px 0;
+        }
+
+        .sequence-controls {
+            display: grid;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, #8b0000 0%, #4a0000 100%);
+            border: 2px solid rgba(255, 0, 0, 0.6);
+        }
+
+        .btn-stop:hover {
+            border-color: rgba(255, 0, 0, 0.9);
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.6);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const FREQUENCY_PRESETS = {
+            gentle: { onTime: 1000, offTime: 1500, label: 'Gentle' },
+            medium: { onTime: 500, offTime: 500, label: 'Medium' },
+            fast: { onTime: 200, offTime: 300, label: 'Fast' },
+            rapid: { onTime: 100, offTime: 150, label: 'Rapid' },
+            strobe: { onTime: 50, offTime: 100, label: 'Strobe' },
+            chaotic: { onTime: 'random', offTime: 'random', label: 'Chaotic' }
+        };
+
+        // Firebase hook
+        const useFirebase = () => {
+            const [connected, setConnected] = useState(false);
+            const [audienceCount, setAudienceCount] = useState(0);
+            const [currentCommand, setCurrentCommand] = useState(null);
+
+            useEffect(() => {
+                // Wait for Firebase to be ready
+                const checkFirebase = setInterval(() => {
+                    if (window.firebaseDb) {
+                        clearInterval(checkFirebase);
+                        setConnected(true);
+
+                        // Listen for audience count
+                        const audienceRef = window.firebaseRef(window.firebaseDb, 'audience');
+                        window.firebaseOnValue(audienceRef, (snapshot) => {
+                            const count = snapshot.exists() ? Object.keys(snapshot.val()).length : 0;
+                            setAudienceCount(count);
+                        });
+
+                        // Listen for commands
+                        const commandRef = window.firebaseRef(window.firebaseDb, 'command');
+                        window.firebaseOnValue(commandRef, (snapshot) => {
+                            if (snapshot.exists()) {
+                                setCurrentCommand(snapshot.val());
+                            }
+                        });
+                    }
+                }, 100);
+
+                return () => clearInterval(checkFirebase);
+            }, []);
+
+            const sendCommand = (cmd) => {
+                if (!window.firebaseDb) return;
+                const commandRef = window.firebaseRef(window.firebaseDb, 'command');
+                window.firebaseSet(commandRef, {
+                    ...cmd,
+                    timestamp: Date.now()
+                });
+            };
+
+            const registerAudience = (id) => {
+                if (!window.firebaseDb) return;
+                const memberRef = window.firebaseRef(window.firebaseDb, `audience/${id}`);
+                window.firebaseSet(memberRef, { joinedAt: Date.now() });
+                
+                // Auto-remove on disconnect
+                window.firebaseOnDisconnect(memberRef).remove();
+            };
+
+            return { connected, audienceCount, currentCommand, sendCommand, registerAudience };
+        };
+
+        // Sound effects
+        const useSoundEffects = () => {
+            const audioContextRef = useRef(null);
+            const [soundEnabled, setSoundEnabled] = useState(true);
+
+            useEffect(() => {
+                audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+                return () => audioContextRef.current?.close();
+            }, []);
+
+            const playSound = (type) => {
+                if (!soundEnabled || !audioContextRef.current) return;
+
+                const ctx = audioContextRef.current;
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                if (type === 'start') {
+                    osc.frequency.setValueAtTime(200, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.15);
+                } else if (type === 'stop') {
+                    osc.frequency.setValueAtTime(400, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+                    osc.start(ctx.currentTime);
+                    osc.stop(ctx.currentTime + 0.15);
+                }
+            };
+
+            return { playSound, soundEnabled, setSoundEnabled };
+        };
+
+        // Icons
+        const LightningIcon = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className="lightning-bolt">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" stroke="currentColor" strokeWidth="1" />
+            </svg>
+        );
+
+        const UsersIcon = ({ size = 24 }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+        );
+
+        // Main App
+        const App = () => {
+            const [mode, setMode] = useState('choose');
+            const [password, setPassword] = useState('');
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
+            const [track, setTrack] = useState(null);
+            const [isFlashing, setIsFlashing] = useState(false);
+            const [isRunning, setIsRunning] = useState(false);
+            const [currentSequence, setCurrentSequence] = useState({
+                preset: 'medium',
+                location: 'all',
+                duration: 10
+            });
+
+            const { connected, audienceCount, currentCommand, sendCommand, registerAudience } = useFirebase();
+            const { playSound } = useSoundEffects();
+
+            const CONTROL_PASSWORD = 'rapture';
+
+            // Request flashlight
+            const requestFlashlight = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'environment' }
+                    });
+                    const videoTrack = stream.getVideoTracks()[0];
+                    setTrack(videoTrack);
+                    
+                    const id = 'aud_' + Date.now();
+                    registerAudience(id);
+                } catch (err) {
+                    alert('Unable to access flashlight. Please grant camera permission.');
+                }
+            };
+
+            // Control flashlight
+            const setFlashlight = async (on) => {
+                if (!track) return;
+                try {
+                    await track.applyConstraints({ advanced: [{ torch: on }] });
+                    setIsFlashing(on);
+                } catch (err) {
+                    console.error('Flashlight error:', err);
+                }
+            };
+
+            // Execute sequence
+            const executeSequence = async (seq) => {
+                const shouldParticipate = () => {
+                    const rand = Math.random();
+                    if (seq.location === 'all') return true;
+                    if (seq.location === 'random-50') return rand < 0.5;
+                    if (seq.location === 'random-25') return rand < 0.25;
+                    if (seq.location === 'wave') return true;
+                    return true;
+                };
+
+                if (!shouldParticipate()) return;
+
+                if (seq.location === 'wave') {
+                    await new Promise(resolve => setTimeout(resolve, Math.random() * 3000));
+                }
+
+                const preset = FREQUENCY_PRESETS[seq.preset];
+                const duration = seq.duration * 1000;
+                const endTime = Date.now() + duration;
+
+                while (Date.now() < endTime) {
+                    const onTime = preset.onTime === 'random' ? Math.random() * 300 + 50 : preset.onTime;
+                    const offTime = preset.offTime === 'random' ? Math.random() * 300 + 50 : preset.offTime;
+
+                    await setFlashlight(true);
+                    await new Promise(r => setTimeout(r, onTime));
+                    await setFlashlight(false);
+                    await new Promise(r => setTimeout(r, offTime));
+                }
+
+                await setFlashlight(false);
+            };
+
+            // Listen for commands
+            useEffect(() => {
+                if (mode === 'audience' && currentCommand && track) {
+                    if (currentCommand.type === 'sequence') {
+                        executeSequence(currentCommand.sequence);
+                    } else if (currentCommand.type === 'stop') {
+                        setFlashlight(false);
+                    }
+                }
+            }, [currentCommand, mode, track]);
+
+            // Run sequence
+            const runSequence = async () => {
+                setIsRunning(true);
+                playSound('start');
+                sendCommand({ type: 'sequence', sequence: currentSequence });
+                
+                await new Promise(r => setTimeout(r, (currentSequence.duration + 1) * 1000));
+                
+                setIsRunning(false);
+                playSound('stop');
+            };
+
+            const stopSequence = () => {
+                sendCommand({ type: 'stop' });
+                setIsRunning(false);
+                playSound('stop');
+            };
+
+            // Loading
+            if (!connected) {
+                return (
+                    <div className="rapture-bg loading-screen">
+                        <div style={{ textAlign: 'center' }}>
+                            <LightningIcon size={60} />
+                            <p style={{ marginTop: '20px', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.2em', fontSize: '14px' }}>
+                                CONNECTING TO HOLY LIGHT...
+                            </p>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Mode selection
+            if (mode === 'choose') {
+                return (
+                    <div className="rapture-bg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px' }}>
+                        <div style={{ maxWidth: '500px', width: '100%', textAlign: 'center' }}>
+                            <div style={{ marginBottom: '60px' }}>
+                                <h1 className="phil-title" style={{ fontSize: '48px', marginBottom: '10px', lineHeight: '1.2' }}>THE PHIL</h1>
+                                <h1 className="phil-title" style={{ fontSize: '48px', marginBottom: '10px', lineHeight: '1.2' }}>MITCHELL</h1>
+                                <h2 className="phil-title" style={{ fontSize: '36px', lineHeight: '1.2' }}>
+                                    RADI<span className="radio-o">O</span> H<span className="radio-o">O</span>UR
+                                </h2>
+                                <div style={{ marginTop: '30px' }}>
+                                    <LightningIcon size={40} />
+                                </div>
+                                <p style={{ color: 'rgba(0, 255, 100, 0.8)', marginTop: '30px', fontSize: '14px', letterSpacing: '0.1em' }}>
+                                    🔴 LIVE • {audienceCount} CONNECTED
+                                </p>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                                <button onClick={() => setMode('audience')} className="btn-rapture" style={{ width: '100%' }}>
+                                    JOIN THE CONGREGATION
+                                </button>
+                                <button onClick={() => setMode('control')} className="btn-rapture" style={{ width: '100%' }}>
+                                    PREACHER CONTROLS
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Audience mode
+            if (mode === 'audience') {
+                if (!track) {
+                    return (
+                        <div className="rapture-bg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px' }}>
+                            <div style={{ maxWidth: '500px', width: '100%', textAlign: 'center' }}>
+                                <div style={{
+                                    width: '120px',
+                                    height: '120px',
+                                    margin: '0 auto 40px',
+                                    borderRadius: '50%',
+                                    background: 'radial-gradient(circle, rgba(139,0,139,0.3) 0%, transparent 70%)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    boxShadow: '0 0 20px rgba(139, 0, 139, 0.5)'
+                                }}>
+                                    <LightningIcon size={60} />
+                                </div>
+
+                                <h1 className="phil-title" style={{ fontSize: '32px', marginBottom: '20px' }}>
+                                    PREPARE FOR<br />THE RAPTURE
+                                </h1>
+
+                                <p style={{ color: 'rgba(255,255,255,0.7)', marginBottom: '40px', fontSize: '16px' }}>
+                                    Activate your flashlight during the broadcast
+                                </p>
+
+                                <button onClick={requestFlashlight} className="btn-rapture" style={{ width: '100%', marginBottom: '20px' }}>
+                                    RECEIVE THE SIGNAL
+                                </button>
+
+                                <button onClick={() => setMode('choose')} style={{
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'rgba(255,255,255,0.4)',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontFamily: 'Cinzel, serif',
+                                    padding: '10px'
+                                }}>
+                                    Return
+                                </button>
+                            </div>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="rapture-bg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px' }}>
+                        <div style={{ maxWidth: '500px', width: '100%', textAlign: 'center' }}>
+                            <div style={{
+                                width: '150px',
+                                height: '150px',
+                                margin: '0 auto 40px',
+                                borderRadius: '50%',
+                                background: isFlashing
+                                    ? 'radial-gradient(circle, rgba(255,215,0,0.8) 0%, rgba(139,0,139,0.4) 100%)'
+                                    : 'radial-gradient(circle, rgba(139,0,139,0.2) 0%, transparent 70%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'all 0.3s ease',
+                                border: isFlashing ? '3px solid rgba(255,215,0,0.5)' : '3px solid rgba(139,0,139,0.3)'
+                            }}>
+                                <LightningIcon size={70} />
+                            </div>
+
+                            <div className="connected-indicator" style={{
+                                width: '12px',
+                                height: '12px',
+                                borderRadius: '50%',
+                                background: '#00ff64',
+                                margin: '0 auto 15px'
+                            }} />
+                            <h2 className="phil-title" style={{ fontSize: '28px', marginBottom: '10px' }}>CONNECTED</h2>
+                            <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '16px', fontStyle: 'italic' }}>
+                                Awaiting transmission...
+                            </p>
+                        </div>
+                    </div>
+                );
+            }
+
+            // Control panel
+            if (mode === 'control') {
+                if (!isAuthenticated) {
+                    return (
+                        <div className="rapture-bg" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px' }}>
+                            <div style={{ maxWidth: '400px', width: '100%', textAlign: 'center' }}>
+                                <h1 className="phil-title" style={{ fontSize: '24px', marginBottom: '40px' }}>BROADCAST CONTROLS</h1>
+
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && password === CONTROL_PASSWORD && setIsAuthenticated(true)}
+                                    placeholder="Enter password"
+                                    style={{ textAlign: 'center' }}
+                                />
+
+                                <button
+                                    onClick={() => password === CONTROL_PASSWORD ? setIsAuthenticated(true) : alert('Incorrect password')}
+                                    className="btn-rapture"
+                                    style={{ width: '100%' }}
+                                >
+                                    BEGIN TRANSMISSION
+                                </button>
+
+                                <button onClick={() => setMode('choose')} style={{
+                                    width: '100%',
+                                    marginTop: '20px',
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'rgba(255,255,255,0.4)',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontFamily: 'Cinzel, serif',
+                                    padding: '10px'
+                                }}>
+                                    Return
+                                </button>
+                            </div>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="rapture-bg" style={{ minHeight: '100vh', padding: '20px' }}>
+                        <div className="control-panel">
+                            <div className="panel-section">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                    <h1 className="phil-title" style={{ fontSize: '24px' }}>BROADCAST CONTROLS</h1>
+                                    <span className={`status-badge ${isRunning ? 'status-running' : 'status-idle'}`}>
+                                        {isRunning ? 'BROADCASTING' : 'IDLE'}
+                                    </span>
+                                </div>
+                                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '14px', fontStyle: 'italic' }}>
+                                    The Phil Mitchell Radio Hour
+                                </p>
+                            </div>
+
+                            <div className="counter-display">
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '15px', marginBottom: '10px' }}>
+                                    <UsersIcon size={32} />
+                                    <div className="counter-number">{audienceCount}</div>
+                                </div>
+                                <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12px', letterSpacing: '0.1em' }}>
+                                    CONGREGATION MEMBERS
+                                </div>
+                            </div>
+
+                            <div className="panel-section">
+                                <h2 className="phil-title" style={{ fontSize: '18px', marginBottom: '20px' }}>QUICK BROADCAST</h2>
+
+                                <div className="sequence-controls">
+                                    <div>
+                                        <label style={{ display: 'block', color: 'rgba(255,255,255,0.7)', fontSize: '12px', marginBottom: '8px' }}>
+                                            Frequency Preset
+                                        </label>
+                                        <select
+                                            value={currentSequence.preset}
+                                            onChange={(e) => setCurrentSequence({ ...currentSequence, preset: e.target.value })}
+                                            disabled={isRunning}
+                                        >
+                                            {Object.entries(FREQUENCY_PRESETS).map(([key, preset]) => (
+                                                <option key={key} value={key}>{preset.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label style={{ display: 'block', color: 'rgba(255,255,255,0.7)', fontSize: '12px', marginBottom: '8px' }}>
+                                            Location Pattern
+                                        </label>
+                                        <select
+                                            value={currentSequence.location}
+                                            onChange={(e) => setCurrentSequence({ ...currentSequence, location: e.target.value })}
+                                            disabled={isRunning}
+                                        >
+                                            <option value="all">All Devices</option>
+                                            <option value="wave">Wave (staggered)</option>
+                                            <option value="random-50">Random 50%</option>
+                                            <option value="random-25">Random 25%</option>
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label style={{ display: 'block', color: 'rgba(255,255,255,0.7)', fontSize: '12px', marginBottom: '8px' }}>
+                                            Duration: {currentSequence.duration} seconds
+                                        </label>
+                                        <input
+                                            type="range"
+                                            min="1"
+                                            max="60"
+                                            value={currentSequence.duration}
+                                            onChange={(e) => setCurrentSequence({ ...currentSequence, duration: parseInt(e.target.value) })}
+                                            disabled={isRunning}
+                                            style={{ width: '100%' }}
+                                        />
+                                    </div>
+
+                                    {isRunning ? (
+                                        <button onClick={stopSequence} className="btn-rapture btn-stop" style={{ width: '100%' }}>
+                                            STOP BROADCAST
+                                        </button>
+                                    ) : (
+                                        <button onClick={runSequence} className="btn-rapture" style={{ width: '100%' }}>
+                                            RUN SEQUENCE
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    setIsAuthenticated(false);
+                                    setPassword('');
+                                    setMode('choose');
+                                }}
+                                style={{
+                                    width: '100%',
+                                    marginTop: '20px',
+                                    background: 'none',
+                                    border: 'none',
+                                    color: 'rgba(255,255,255,0.4)',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontFamily: 'Cinzel, serif',
+                                    padding: '15px'
+                                }}
+                            >
+                                End Transmission
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+        };
+
+        // Wait for Firebase to load before rendering
+        setTimeout(() => {
+            ReactDOM.render(<App />, document.getElementById('root'));
+        }, 500);
+    </script>
+</body>
+</html>
